@@ -1,11 +1,12 @@
 const exp=require('express')
 const route=exp.Router()
 const customers=require('../Entities/Customer')
-var bcrypt=require('bcryptjs')
-var CryptoJS=require('crypto-js')
-var jwt=require('jsonwebtoken')
+const bcrypt=require('bcryptjs')
+const CryptoJS=require('crypto-js')
+const jwt=require('jsonwebtoken')
 const sessions = require('../Entities/Session')
 const passport = require('passport')
+
 const GoogleStrategy = require( 'passport-google-oauth2' ).Strategy;
 const express_session = require('express-session')
 const CustomerAuthenticationController= require ('../controllers/CustomerAuthentication')
@@ -46,14 +47,16 @@ checkAuthenticated = (req, res, next) => {
     if (req.isAuthenticated()) { return next() }
     res.redirect("/login")
   }
-route.post('/register',CustomerAuthenticationController.register)
-route.post('/login/:email',CustomerAuthenticationController.Login)
-route.post('/get_authentified_user/',CustomerAuthenticationController.Get_Authenticated_User)
-route.get('/auth/google',CustomerAuthenticationController.Google_Auth_Welcome);
-route.get('/auth/google/callback',CustomerAuthenticationController.Google_Auth_CallBack);
-route.get("/auth/google/dashboard", checkAuthenticated, CustomerAuthenticationController.GoogleAuthSignIn)
-route.put("/auth/google/set_password/:email",CustomerAuthenticationController.set_Password)
-route.get("/view_profile/:id",CustomerAuthenticationController.View_Profile)
-route.put("/edit_profile/:id",CustomerAuthenticationController.Edit_Profile)
-route.post("/logout",CustomerAuthenticationController.LogOut)
+route.post('/register',CustomerAuthenticationController.register);
+route.post('/login/:email',CustomerAuthenticationController.Login);
+route.post('/get_authentified_user/',CustomerAuthenticationController.Get_Authenticated_User);
+route.get ('/auth/google',CustomerAuthenticationController.Google_Auth_Welcome);
+route.get ('/auth/google/callback',CustomerAuthenticationController.Google_Auth_CallBack);
+route.get ("/auth/google/dashboard", checkAuthenticated, CustomerAuthenticationController.GoogleAuthSignIn);
+route.put ("/auth/google/set_password/:email",CustomerAuthenticationController.set_Password);
+route.get ("/view_profile/:id",CustomerAuthenticationController.View_Profile);
+route.put ("/edit_profile/:id",CustomerAuthenticationController.Edit_Profile);
+route.post("/logout",CustomerAuthenticationController.LogOut);
+route.post("/ForgotPassword/:email",CustomerAuthenticationController.ForgotPassword);
+route.post('/simple_login/:email',CustomerAuthenticationController.simple_login)
 module.exports=route

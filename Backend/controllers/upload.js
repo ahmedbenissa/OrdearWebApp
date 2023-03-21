@@ -1,5 +1,6 @@
 const upload = require("../middleware/upload");
-const users=require('../Entities/User')
+const users=require('../Entities/User');
+const Customer = require("../Entities/Customer");
 
 const MongoClient = require("mongodb").MongoClient;
 const GridFSBucket = require("mongodb").GridFSBucket;

@@ -10,7 +10,7 @@ export default function Table()
   const [table,setTable]=useState([])
   useEffect(()=>{
     
-    axios.get('resp/list_users').then(async (res)=>{
+    axios.get('/resp/list_users').then(async (res)=>{
       console.log(res)
       
       

@@ -1,8 +1,8 @@
-var nodemailer = require('nodemailer');
+const nodemailer = require('nodemailer');
 const express= require('express')
-var bcrypt=require('bcryptjs')
-var CryptoJS=require('crypto-js')
-var jwt=require('jsonwebtoken')
+const bcrypt=require('bcryptjs')
+const CryptoJS=require('crypto-js')
+const jwt=require('jsonwebtoken')
 const Mailing = (req,res)=>{
     var transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -26,6 +26,74 @@ const Mailing = (req,res)=>{
         }
       });
 }
+const MailingForgotPasswordCustomer = (req,res)=>{
+  var transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'baissahmed@gmail.com',
+        pass: 'crxxmebbhxnbatdd'
+      }
+    });
+    let link =  'http://localhost:3000/forgot_password_customer?q='+req.params.email
+    var mailOptions = {
+      from: 'baissahmed@gmail.com',
+      to: req.params.email,
+      subject: "Forgot Password",
+      text: '<a href="'+link+'"></a>'
+    };
+    transporter.sendMail(mailOptions, function(error, info){
+      if (error) {
+        console.log(error);
+      } else {
+        res.send('Email sent: ' + info.response);
+      }
+    });
+}
+
+const MailingForgotPasswordResponsible = (req,res)=>{
+  var transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'baissahmed@gmail.com',
+        pass: 'crxxmebbhxnbatdd'
+      }
+    });
+    var hash = CryptoJS.SHA256(req.params.email+req.body.password)
+    let jwtSecretKey = hash.toString(CryptoJS.enc.Base64);
+    let data = {
+        time: Date(),
+        Email:req.params.email,
+       // iss:hash
+    }
+    let  init_time=new Date(Date.now())
+    let  auth_token_expire=new Date(Date.now()+(0.2)*3600000)
+    const auth_token = jwt.sign(data, jwtSecretKey);
+    console.log(auth_token)
+    console.log("expire=>"+auth_token_expire)
+  
+   let link =  'http://localhost:8000/resp/check_reset_password_link_duration'
+    var mailOptions = {
+      from: 'baissahmed@gmail.com',
+      to: req.params.email,
+      subject: "Forgot Password",
+      text: '<a href="'+link+'"></a>',
+      html:'<h1>Click on the link Below 👇</h1>'+
+      
+      '<p style="color:red ; font-family:verdana;">'+"this link expires in 10 minutes"+'</p>'+
+      ' <form  action="'+link+'"'+ 'method="POST" > '+
+      ' <input type="text" value="'+req.params.email+'"' +'id="email" name="email"  style="display:none"> '+
+      ' <input type="text" value="'+auth_token+'"' +'id="auth_token" name="auth_token"  style="display:none"> '+
+      ' <input  value="'+auth_token_expire+'"' +'id="auth_token_expire" name="auth_token_expire"  style="display:none"> '+ 
+      ' <input  type="submit" value="Submit"></form> '
+    };
+    transporter.sendMail(mailOptions, function(error, info){
+      if (error) {
+        console.log(error);
+      } else {
+        res.send('Email sent: ' + info.response);
+      }
+    });
+}
 const validate_customer=(req,res)=>{
   var transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -44,7 +112,7 @@ const validate_customer=(req,res)=>{
          // iss:hash
       }
       let  init_time=new Date(Date.now())
-      let  auth_token_expire=new Date(Date.now()+(0.01)*3600000)
+      let  auth_token_expire=new Date(Date.now()+(0.2)*3600000)
       const auth_token = jwt.sign(data, jwtSecretKey);
       console.log(auth_token)
       console.log("expire=>"+auth_token_expire)
@@ -89,7 +157,7 @@ const validateEmployee = (req,res)=>{
          // iss:hash
       }
       let  init_time=new Date(Date.now())
-      let  auth_token_expire=new Date(Date.now()+(0.01)*3600000)
+      let  auth_token_expire=new Date(Date.now()+(0.2)*3600000)
       const auth_token = jwt.sign(data, jwtSecretKey);
       console.log(auth_token)
       console.log("expire=>"+auth_token_expire)
@@ -134,7 +202,7 @@ const validateResponsible = (req,res)=>{
          // iss:hash
       }
       let  init_time=new Date(Date.now())
-      let  auth_token_expire=new Date(Date.now()+(0.01)*3600000)
+      let  auth_token_expire=new Date(Date.now()+(0.2)*3600000)
       const auth_token = jwt.sign(data, jwtSecretKey);
       console.log(auth_token)
       console.log("expire=>"+auth_token_expire)
@@ -162,5 +230,5 @@ const validateResponsible = (req,res)=>{
     });
 }
 module.exports={
-  Mailing,validate_customer,validateEmployee,validateResponsible
+  Mailing,validate_customer,validateEmployee,validateResponsible,MailingForgotPasswordCustomer,MailingForgotPasswordResponsible
 }

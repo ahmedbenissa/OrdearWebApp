@@ -1,8 +1,8 @@
 const exp=require('express')
 const route=exp.Router()
 const customers=require('../Entities/Customer')
-var bcrypt=require('bcryptjs')
-var CryptoJS=require('crypto-js')
+const bcrypt=require('bcryptjs')
+const CryptoJS=require('crypto-js')
 var jwt=require('jsonwebtoken')
 const sessions = require('../Entities/Session')
 const passport = require('passport')
@@ -95,6 +95,51 @@ customers.find({
 }
 })
 };
+const simple_login = async(req,res)=>{
+    var salt = bcrypt.genSaltSync(10);  
+    customers.find({  
+        email:req.params.email,
+    },(err,docs)=>{
+        if(err){
+            res.send(err)
+        }
+        else { 
+             console.log(docs)
+             if(docs.length==0)
+             {
+                res.send('not found')
+             }
+             else              {
+                if( bcrypt.compareSync(req.body.password, docs[0].password)==true)
+           {
+            let user=docs
+            console.log("found") 
+             var hash = CryptoJS.SHA256(req.params.email+req.body.password)
+             let jwtSecretKey = hash.toString(CryptoJS.enc.Base64);
+             let data = {
+                 time: Date(),
+                  Email:docs[0].email,
+                 Username:docs[0]._id,
+             }
+             const token = jwt.sign(data, jwtSecretKey);
+             console.log(token)
+              sessions.updateOne( 
+                { "user" : docs[0].id },
+                {$set:{"init_time":Date.now(),"expire": new Date(Date.now()+8*3600000),"token_parsed":token}}
+              
+              ,(err,docs)=>{
+                if(err) res.send(err)
+                sessions.find({user:user[0]._id},(err,docs)=>{
+                    if(err) res.send(err)
+                    else res.send(docs)
+                })
+               
+              })
+            }}}
+           
+          
+        })
+    }
 const Get_Authenticated_User=async(req,res)=>{
     sessions.find({token_parsed:req.body.token},(err,docs)=>{
         if(err)
@@ -150,7 +195,9 @@ const GoogleAuthSignIn = (req, res) => {
                             expire: new Date(Date.now()+8*3600000)
                         },(err,reslt)=>{
                             if(err ) res.send(err)
-                            else res.redirect('http://localhost:3000/login_as_customer?q='+reslt[0].token_parsed)
+                            else { 
+                                console.log(reslt)
+                                res.redirect('http://localhost:3000/login_as_customer?q='+reslt.token_parsed)}
                         })
 
                      }
@@ -190,6 +237,10 @@ const set_Password =  async(req,res)=>{
     })
 };
 const View_Profile = async(req,res)=>{
+    //req.headers.auth
+    var authHeader = req.headers.authorization;
+    var Token = authHeader.substring(7,authHeader.length)
+    console.log(Token)
     customers.find({_id:req.params.id},(err,docs)=>{
         if(err)
         {
@@ -197,7 +248,20 @@ const View_Profile = async(req,res)=>{
 
         }
         else {
-            res.send(docs)
+           // res.send(docs)
+            sessions.find({"user":docs[0]._id},(err,results)=>{
+
+                if(err) res.send (err)
+                else {
+                    if(results[0].token_parsed==Token)
+                    {
+                        res.send(docs)
+                    }
+                    else {
+                        res.send(500,"you are unauthorized to view this profile since it does not belong to you!")
+                    }
+                }
+            })
         }
     })
 };
@@ -212,9 +276,45 @@ const Edit_Profile = async(req,res)=>{
                 res.send("you must activate your account by validating your email")
             }
             else {
+                var authHeader = req.headers.authorization;
+                var Token = authHeader.substring(7,authHeader.length)
+                if(docs[0].token_parsed==Token){customers.updateOne(
+                    { "_id": req.params.id}, // Filter
+                    {$set:{"phone":req.body.phone,"address":req.body.address,"image":req.body.image}} // Update
+                )
+                .then((obj) => {
+                    console.log('Updated - ' + obj);
+                    res.send(obj)
+                })
+                .catch((err) => {
+                    console.log('Error: ' + err);
+                })}
+                else {
+                    res.status(500).send('you are unauthorized to edit this profile since it does not belong to you')
+                }
+
+                   
+            }
+        }
+    })  
+};
+const ForgotPassword = (req,res)=>{
+   const email=req.params.email
+   const new_password=req.body.password
+    customers.find({email:email},(err,docs)=>{
+        if(err){
+            res.send(err)     
+        }
+        else {
+            if(docs[0].length==0)
+            {
+                res.send("user not found")
+            }
+            else {
+                var salt = bcrypt.genSaltSync(10);
                     customers.updateOne(
-                        { "_id": req.params.id}, // Filter
-                        {$set:{"phone":req.body.phone,"address":req.body.address,"image":req.body.image}} // Update
+                        { "_id": docs[0]._id}, // Filter
+                        {$set:{"password":bcrypt.hashSync(new_password, salt)}} // Update
                     )
                     .then((obj) => {
                         console.log('Updated - ' + obj);
@@ -225,8 +325,8 @@ const Edit_Profile = async(req,res)=>{
                     })
             }
         }
-    })  
-};
+    })
+}
 const LogOut=(req,res) => {
     req.logOut()
     res.redirect("/login")
@@ -242,5 +342,7 @@ module.exports={
  set_Password,
  View_Profile,
  Edit_Profile,
- LogOut
+ ForgotPassword,
+ LogOut,
+ simple_login
 }

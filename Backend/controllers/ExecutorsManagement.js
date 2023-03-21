@@ -1,5 +1,6 @@
 const users=require('../Entities/User')
 const Post = require('../Entities/Post')
+var bcrypt=require('bcryptjs')
 const AddExecutor = async(req,res)=>{   
     var salt = bcrypt.genSaltSync(15);
     users.create({
@@ -43,12 +44,12 @@ const RetrieveExecutor = async(req,res)=>{
         }
     })
     }
- const Edit_Executor  =   async(req,res)=>{
+ const Edit_User  =   async(req,res)=>{
     
-      
+    var salt = bcrypt.genSaltSync(15);
         users.updateOne(
             { "_id": req.params.id}, // Filter
-            {$set:{"phone":req.body.phone,"address":req.body.address,"image":req.body.image,"password":bcrypt.hashSync(req.body.password, salt)}} // Update
+            {$set:{"phone":req.body.phone,"address":req.body.address,"image":req.body.image}} // Update
         )
         .then((obj) => {
             console.log('Updated - ' + obj);
@@ -101,7 +102,7 @@ const GetRole = async(req,res)=>{
     users.find(
         { "_id": req.params.id_emp})
     .then((obj) => {
-      //  console.log('Updated - ' + obj);
+   
         Post.find({"_id":obj[0].role},(err,docs)=>{if(err) res.send(err)
         else res.send(docs)})
          })
@@ -113,7 +114,7 @@ module.exports={
     AddExecutor,
     AssignRoleToExecutor,
     RetrieveExecutor,
-    Edit_Executor,
+    Edit_User,
     DisplayEmployeesByRestaurant,
     GetRole
 }

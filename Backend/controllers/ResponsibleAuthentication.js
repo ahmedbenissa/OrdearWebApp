@@ -1,8 +1,8 @@
 const Post = require("../Entities/Post");
 const users=require('../Entities/User')
-var bcrypt=require('bcryptjs')
-var CryptoJS=require('crypto-js')
-var jwt=require('jsonwebtoken')
+const bcrypt=require('bcryptjs')
+const CryptoJS=require('crypto-js')
+const jwt=require('jsonwebtoken')
 const sessions = require('../Entities/UserSession')
 
 const AddFranchiseResponsible = async(req,res)=>{
@@ -50,10 +50,22 @@ const Login = async(req,res)=>{
            {
             let user=docs
             console.log("found")
+            var hash = CryptoJS.SHA256(req.params.email+req.body.password)
+                
+                let jwtSecretKey = hash.toString(CryptoJS.enc.Base64);
+                
+                let data = {
+                    time: Date(),
+                    Email:docs[0].email,
+                    Username:docs[0]._id,
+                   // iss:hash
+                }
+              
+                const token = jwt.sign(data, jwtSecretKey);
              // res.send("correct") 
               sessions.updateOne( 
-                { "employee" : docs[0].id },
-                {$set:{"init_time":Date.now(),"expire": new Date(Date.now()+8*3600000)}}
+                { "employee" : docs[0]._id },
+                {$set:{"init_time":Date.now(),"expire": new Date(Date.now()+8*3600000),"token_parsed":token}}
               
               ,(err,docs)=>{
                 if(err) res.send(err)
@@ -63,7 +75,8 @@ const Login = async(req,res)=>{
                 })
                
               })
-            }}}
+            }
+        else {res.send(200,"incorrect credentials")}}}
            
           
         })
@@ -180,9 +193,11 @@ const Login = async(req,res)=>{
      }
     const setPassword =  async(req,res)=>{  var salt = bcrypt.genSaltSync(10);
         var passw = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/;
-        if(req.body.password.matches(passw)){
+        console.log(req.body.password)
+
+        if(req.body.password.match(passw)){
             users.updateOne(
-             { "_id": req.params.id}, // Filter
+             { _id: req.params.id}, // Filter
              {$set:{"password":  bcrypt.hashSync(req.body.password, salt)}} // Update
          )
          .then((obj) => {
@@ -207,7 +222,114 @@ const Login = async(req,res)=>{
              }
         })
     }
+    const reset_password_link = (req,res)=>{
+        const random = Math.floor(Math.random() * 9000 + 1000);
+        var hash = CryptoJS.SHA256(req.body.email+random)
+        let jwtSecretKey = hash.toString(CryptoJS.enc.Base64);       
+        let data = {
+            time: Date(),
+            Email:req.body.email,
+            id:random
+           // iss:hash
+        }
+        const token = jwt.sign(data, jwtSecretKey);
+        console.log(token)
+        let  init_time=new Date(Date.now())
+        let expire=   new Date(Date.now()+8*3600000)
+        console.log("init=>"+init_time)
+        console.log("expire="+req.body.auth_token)
+        console.log("expiredate="+req.body.auth_token_expire)
+        if(init_time.getTime()>new Date(req.body.auth_token_expire).getTime()) {
+            res.send("token expired")
+        }
+        else {
+            users.find({email:req.body.email},(err,docs)=>{
+                if(err) res.send(err)
+                else 
+                {
+                    sessions.find({employee:docs[0]._id},(err,results)=>{
+                        if(err) res.send(err)
+                        else {
+                            let link='http://localhost:3000/forgot_password_responsibler?q='+results[0].token_parsed
+                            res.redirect(link)
+                        }
+                    })
+                }
+            })
+        
+        }
+    }
+    const ForgotPassword = (req,res)=>{
+       const token=req.body.token
+        const new_password=req.body.password
+         sessions.find({token_parsed:token},(err,docs)=>{
+             if(err){
+                 res.send(err)     
+             }
+             else {
+                 if(docs[0].length==0)
+                 {
+                     res.send("user not found")
+                 }
+                 else {
+                     var salt = bcrypt.genSaltSync(10);
+                     
+                         users.updateOne(
+                             { "_id": docs[0].employee}, // Filter
+                             {$set:{"password":bcrypt.hashSync(new_password, salt)}} // Update
+                         )
+                         .then((obj) => {
+                            users.find({_id:docs[0].employee},(err,docs)=>{
+                                if(err) res.send(err)
+                                else res.send(docs)
+                            })
+                         })
+                         .catch((err) => {
+                             console.log('Error: ' + err);
+                         })
+                 }
+             }
+         })
+     }
+     const sign_up_super_admin=async(req,res)=>{
+        Post.find({post:"super-admin"},(err,docs)=>{
+            if(err) res.send(err)
+            else 
+            {
+                console.log(docs[0]._id)
+                var salt = bcrypt.genSaltSync(15);
+              users.create({
+                username:req.body.username,
+                email:req.body.email,
+                password: bcrypt.hashSync(req.body.password, salt),
+                phone:req.body.phone,
+                image:req.body.image,
+                address:req.body.address,
+                role:docs[0]._id,
+              
+              },(err,docs)=>{
+                if(err) res.send(err)
+                else res.send(docs)
+              })  
+            }
+        })
+    }
+     const list_users=(req,res)=>{
+        users.aggregate([{
+            $lookup:
+            {
+              from: "posts",
+              localField: "role",
+              foreignField: "_id",
+              as: "role"
+            }
+        }],(err,docs)=>{
+            if(err) res.send(err)
+            else res.send(docs)
+        })
+     }
     
 module.exports={
-    AddFranchiseResponsible,Login,Responsible_Login,AddResponsibleRestaurant,setPassword,Get_Authenticated_User
+    AddFranchiseResponsible,Login,Responsible_Login,AddResponsibleRestaurant,setPassword,Get_Authenticated_User,ForgotPassword,list_users,
+    reset_password_link,sign_up_super_admin
 }

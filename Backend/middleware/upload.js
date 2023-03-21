@@ -6,7 +6,7 @@ url: "mongodb+srv://Ipactconsult:Ipact2021@cluster0.jt1kl.mongodb.net/",
   database: "Ordear_DB",
   imgBucket: "photos",
 }
-var storage = new GridFsStorage({
+const storage = new GridFsStorage({
   url: "mongodb+srv://Ipactconsult:Ipact2021@cluster0.jt1kl.mongodb.net/Ordear_DB",
   options: { useNewUrlParser: true, useUnifiedTopology: true },
   file: (req, file) => {
